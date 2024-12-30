@@ -130,18 +130,18 @@ export default function HomePage() {
   const handleSend = async (message) => {
     if (!message.trim()) return;
       // The context prompt we want to remove if it's included in message
-      const contextprompt = "you are a human healthcare provider , be friendly , answers should be short and consice , if you have a question ask one at a time anf wait for reply, talk as a human name jimmy";
+      const contextprompt = "you are a human healthcare provider , be friendly , answers should be short and consice , if you have a question ask one at a time and wait for reply, talk as a human named jimmy, remeber the talk user is doing  give solutions and suggestions";
 
     // Remove contextprompt if it's present in the message
     let processedMessage = message;
     if (processedMessage.includes(contextprompt)) {
-      processedMessage = processedMessage.replace(contextprompt, "").trim();
-    }
-
-    setConversation((prev) => [
+      console.log("initial message", processedMessage);
+    }else{setConversation((prev) => [
       ...prev,
       { role: "user", content: processedMessage },
-    ]);
+    ]);}
+
+    
     try {
       const response = await fetch("https://caretaker-ai.vercel.app/api/chat", {
         method: "POST",
@@ -253,8 +253,8 @@ export default function HomePage() {
   
           const data = await response.json();
           console.log("Transcribed text:", data.text || data.error || "No text");
-          const finaldata = "you are a human healthcare provider , be friendly , answers should be short and consice , if you have a question ask one at a time anf wait for reply, talk as a human name jimmy"+data.text;
-          const answer = await handleSend(finaldata);
+          data.text;
+          const answer = await handleSend(data.text);
           
           startSpeak(answer);
         } catch (error) {
@@ -309,7 +309,10 @@ export default function HomePage() {
       console.error("Error starting voice recognition:", err);
     }
   };
-  
+  useEffect(() => {
+    const contextprompt = "you are a human healthcare provider , be friendly , answers should be short and consice , if you have a question ask one at a time and wait for reply, talk as a human named jimmy, remeber the talk user is doing  give solutions and suggestions";
+    handleSend(contextprompt);
+  },[])
   
 
   // NEW: Stop showing "Listening..." after userMessage updates (assuming recognition ended)
