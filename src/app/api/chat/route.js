@@ -2,17 +2,52 @@ import Groq from "groq-sdk";
 
 const groq = new Groq({ apiKey: process.env.API_KEY });
 
-export default async function handler(req, res) {
-  if (req.method === 'POST') {
-    try {
-      const chatCompletion = await getGroqChatCompletion(req.body.message || "Explain the importance of fast language models");
-      res.status(200).json({ message: chatCompletion.choices[0]?.message?.content || "No response from model" });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch completion", details: error.message });
-    }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+// 1) Handle OPTIONS request for CORS preflight
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",               // <-- Change "*" to your domain in production
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  });
+}
+
+// 2) Handle POST requests
+export async function POST(req) {
+  try {
+    const body = await req.json();
+    const message =
+      body.message || "Explain the importance of fast language models";
+    const chatCompletion = await getGroqChatCompletion(message);
+
+    return new Response(
+      JSON.stringify({
+        message: chatCompletion.choices[0]?.message?.content || "No response from model",
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*", // <-- Change "*" to your domain in production
+        },
+      }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({
+        error: "Failed to fetch completion",
+        details: error.message,
+      }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*", // <-- Change "*" to your domain in production
+        },
+      }
+    );
   }
 }
 
