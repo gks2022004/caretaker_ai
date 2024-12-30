@@ -2,28 +2,117 @@
 
 import { useState } from "react";
 
-// Helper: Formats message content into paragraphs/lists
+/**
+ * Renders paragraphs, bold text, inline code, code blocks, and lists
+ * from a pseudo-Markdown-like response.
+ */
 function formatMessageContent(content) {
-  const lines = content.trim().split(/\r?\n/);
+  const codeBlockRegex = /```([\s\S]*?)```/g;
+  const chunks = [];
+  let lastIndex = 0;
+  let match;
 
-  return lines.map((line, idx) => {
-    const isBullet = /^\s*[-*]\s+/.test(line);
-    const isNumbered = /^\s*\d+\.\s+/.test(line);
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      chunks.push({ type: "text", value: content.slice(lastIndex, match.index) });
+    }
+    chunks.push({ type: "code-block", value: match[1] });
+    lastIndex = codeBlockRegex.lastIndex;
+  }
 
-    if (isBullet) {
+  if (lastIndex < content.length) {
+    chunks.push({ type: "text", value: content.slice(lastIndex) });
+  }
+
+  return chunks.flatMap((chunk, i) => {
+    if (chunk.type === "code-block") {
       return (
-        <li className="list-disc list-inside" key={idx}>
-          {line.replace(/^[-*]\s+/, "")}
-        </li>
-      );
-    } else if (isNumbered) {
-      return (
-        <li className="list-decimal list-inside" key={idx}>
-          {line.replace(/^\d+\.\s+/, "")}
-        </li>
+        <pre key={`codeblock-${i}`} className="bg-gray-800 text-gray-100 p-3 rounded-md my-2 text-sm overflow-auto">
+          <code>{chunk.value.trim()}</code>
+        </pre>
       );
     } else {
-      return <p key={idx}>{line}</p>;
+      const lines = chunk.value.split(/\r?\n/);
+
+      return lines.map((line, idx) => {
+        const trimmedLine = line.trim();
+        const isBullet = /^\s*[-*]\s+/.test(trimmedLine);
+        const isNumbered = /^\s*\d+\.\s+/.test(trimmedLine);
+
+        if (isBullet) {
+          const itemText = trimmedLine.replace(/^[-*]\s+/, "");
+          return (
+            <li className="list-disc list-inside" key={`bullet-${i}-${idx}`}>
+              {renderInlineFormatting(itemText)}
+            </li>
+          );
+        } else if (isNumbered) {
+          const itemText = trimmedLine.replace(/^\d+\.\s+/, "");
+          return (
+            <li className="list-decimal list-inside" key={`numbered-${i}-${idx}`}>
+              {renderInlineFormatting(itemText)}
+            </li>
+          );
+        } else if (!trimmedLine) {
+          return <br key={`linebreak-${i}-${idx}`} />;
+        } else {
+          return (
+            <p key={`para-${i}-${idx}`} className="my-1">
+              {renderInlineFormatting(line)}
+            </p>
+          );
+        }
+      });
+    }
+  });
+}
+
+/**
+ * Handles inline code (`), bold (**), etc.
+ */
+function renderInlineFormatting(text) {
+  const inlineRegex = /(\*\*[^*]+\*\*)|(`[^`]+`)/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = inlineRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: "text", value: text.slice(lastIndex, match.index) });
+    }
+    const matchedStr = match[0];
+
+    if (matchedStr.startsWith("**")) {
+      const boldText = matchedStr.replace(/\*\*/g, "");
+      parts.push({ type: "bold", value: boldText });
+    } else if (matchedStr.startsWith("`")) {
+      const codeText = matchedStr.replace(/`/g, "");
+      parts.push({ type: "inline-code", value: codeText });
+    }
+
+    lastIndex = inlineRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ type: "text", value: text.slice(lastIndex) });
+  }
+
+  return parts.map((part, i) => {
+    switch (part.type) {
+      case "bold":
+        return (
+          <strong key={`bold-${i}`} className="font-semibold">
+            {part.value}
+          </strong>
+        );
+      case "inline-code":
+        return (
+          <code key={`code-${i}`} className="bg-gray-300 px-1 rounded">
+            {part.value}
+          </code>
+        );
+      default:
+        return <span key={`text-${i}`}>{part.value}</span>;
     }
   });
 }
@@ -35,13 +124,10 @@ export default function HomePage() {
   const handleSend = async () => {
     if (!userMessage.trim()) return;
 
-    // Add user message immediately
     setConversation((prev) => [...prev, { role: "user", content: userMessage }]);
-
     const currentMessage = userMessage;
     setUserMessage("");
 
-    // Call your backend /api/chat
     try {
       const response = await fetch("http://localhost:3000/api/chat", {
         method: "POST",
@@ -56,14 +142,12 @@ export default function HomePage() {
       const data = await response.json();
       const aiReply = data?.message || "No response from API";
 
-      // Add AI response
       setConversation((prev) => [
         ...prev,
         { role: "assistant", content: aiReply },
       ]);
     } catch (error) {
       console.error("Error fetching API:", error);
-      // Optionally display an error in the conversation
     }
   };
 
@@ -77,8 +161,12 @@ export default function HomePage() {
             return (
               <div
                 key={idx}
-                className={`w-fit max-w-full p-4 rounded-lg whitespace-pre-wrap break-words
-                  ${isUser ? "bg-blue-500 text-white self-end" : "bg-gray-300 text-gray-800 self-start"}
+                className={`w-fit max-w-full p-4 rounded-lg whitespace-pre-wrap break-words 
+                  ${
+                    isUser
+                      ? "bg-blue-500 text-white self-end"
+                      : "bg-gray-300 text-gray-800 self-start"
+                  }
                 `}
               >
                 {formatMessageContent(msg.content)}
@@ -88,8 +176,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Chat Input (no footer element) */}
-      <div className="p-4 flex justify-center items-center">
+      {/* Sticky Chat Input at Bottom */}
+      <div className="sticky bottom-0 left-0 right-0 p-4 bg-gray-200 flex justify-center items-center">
         <div className="w-full max-w-xl flex items-center space-x-2">
           <input
             type="text"
