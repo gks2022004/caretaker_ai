@@ -1,14 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { supabase } from "../clients/supabase";
-
+import { useRouter } from "next/navigation";
 export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [infoMsg, setInfoMsg] = useState("");
-
+    const router = useRouter();
   const handleEmailChange = (e) => setEmail(e.target.value);
   const handlePasswordChange = (e) => setPassword(e.target.value);
 
@@ -34,6 +34,7 @@ export default function AuthPage() {
         });
         if (error) throw error;
         setInfoMsg("Login successful!");
+        router.push("/");
       }
     } catch (error) {
       setErrorMsg(error.message);
@@ -51,6 +52,16 @@ export default function AuthPage() {
       setErrorMsg(error.message);
     }
   };
+  useEffect(() => {
+    // Check if user is logged in
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        // Redirect to login if not logged in
+        router.replace("/");
+      }
+
+    });
+  }, [router]);
 
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100 text-black">
