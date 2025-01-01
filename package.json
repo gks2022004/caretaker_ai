@@ -9,15 +9,26 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "child_process": "^1.0.2",
+    "@aws-sdk/credential-providers": "^3.716.0",
+    "@langchain/cohere": "^0.3.2",
+    "@langchain/community": "^0.3.20",
+    "@langchain/core": "^0.3.26",
+    "@langchain/groq": "^0.1.2",
+    "@langchain/langgraph": "^0.2.38",
+    "@smithy/types": "^3.7.2",
+    "faiss-node": "^0.5.1",
     "groq-sdk": "^0.9.1",
-    "mic": "^2.1.2",
+    "langchain": "^0.3.8",
     "next": "15.1.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "uninstall": "^0.0.0",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
+    "@types/react": "19.0.2",
     "postcss": "^8",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.1",
+    "typescript": "5.7.2"
   }
 }

@@ -143,7 +143,7 @@ export default function HomePage() {
 
     
     try {
-      const response = await fetch("https://caretaker-ai.vercel.app/api/chat", {
+      const response = await fetch("https://caretaker-ai.vercel.app/api/smartchat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
@@ -309,10 +309,10 @@ export default function HomePage() {
       console.error("Error starting voice recognition:", err);
     }
   };
-  useEffect(() => {
-    const contextprompt = "you are a human healthcare provider , be friendly , answers should be short and consice , if you have a question ask one at a time and wait for reply, talk as a human named jimmy, remeber the talk user is doing  give solutions and suggestions";
-    handleSend(contextprompt);
-  },[])
+  // useEffect(() => {
+  //   const contextprompt = "you are a human healthcare provider , be friendly , answers should be short and consice , if you have a question ask one at a time and wait for reply, talk as a human named jimmy, remeber the talk user is doing  give solutions and suggestions";
+  //   handleSend(contextprompt);
+  // },[])
   
 
   // NEW: Stop showing "Listening..." after userMessage updates (assuming recognition ended)
