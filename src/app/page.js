@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
+import { useRouter } from "next/navigation";
+import { supabase } from "./clients/supabase";
 /**
  * Renders paragraphs, bold text, inline code, code blocks, and lists
  */
@@ -122,6 +123,7 @@ export default function HomePage() {
   const [conversation, setConversation] = useState([]);
   const [voiceMode, setVoiceMode] = useState(false);
   const [isSpeaking,setIsSpeaking] = useState(false);
+  const [userData, setUserData] = useState(null);
   // NEW: Track whether speech recognition is active
   const [listening, setListening] = useState(false);
 
@@ -146,7 +148,10 @@ export default function HomePage() {
       const response = await fetch("https://caretaker-ai.vercel.app/api/smartchat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({
+          message: message,    // Or whatever variable holds your message text
+          id: userData.id,   // Or whatever variable holds your ID
+        }),
       });
 
       if (!response.ok) throw new Error("Network response was not ok");
@@ -309,88 +314,126 @@ export default function HomePage() {
       console.error("Error starting voice recognition:", err);
     }
   };
-  // useEffect(() => {
-  //   const contextprompt = "you are a human healthcare provider , be friendly , answers should be short and consice , if you have a question ask one at a time and wait for reply, talk as a human named jimmy, remeber the talk user is doing  give solutions and suggestions";
-  //   handleSend(contextprompt);
-  // },[])
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  }
   
-
-  // NEW: Stop showing "Listening..." after userMessage updates (assuming recognition ended)
   useEffect(() => {
     if (userMessage) {
       setListening(false);
     }
   }, [userMessage]);
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check if user is logged in
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        // Redirect to login if not logged in
+        router.replace("/login");
+      }else{
+        setUserData(data.user);
+        console.log(data.user);
+      }
+
+    });
+  }, [router]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-200 text-black">
-      {/* Toggle Mode */}
-      <div className="p-4 flex justify-center">
-        <button
-          onClick={() => setVoiceMode(!voiceMode)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+<div className="min-h-screen bg-gray-200 flex flex-col items-center text-black">
+  {/* Header */}
+  <div className="mt-4 mb-4 w-full max-w-3xl">
+    <div className="bg-white rounded-full shadow flex justify-between items-center px-4 py-2">
+      <button
+        onClick={() => setVoiceMode(!voiceMode)}
+        className="bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700"
+      >
+        {voiceMode ? "Switch to Text Chat" : "Switch to Voice Chat"}
+      </button>
+
+      <button
+        onClick={() => {
+          handleLogout();
+        }}
+        className="text-red-500 hover:text-red-600 font-semibold"
+      >
+        Logout
+      </button>
+    </div>
+  </div>
+
+  {/* Chat Container */}
+  <div className="w-full max-w-3xl flex flex-col bg-white shadow-md rounded-lg overflow-hidden">
+    {/* Chat Messages */}
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col space-y-2 pb-32">
+      {conversation.map((msg, idx) => (
+        <div
+          key={idx}
+          className={`flex ${
+            msg.role === "user" ? "justify-end" : "justify-start"
+          }`}
         >
-          {voiceMode ? "Switch to Text Chat" : "Switch to Voice Chat"}
-        </button>
-      </div>
-
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 flex justify-center">
-        <div className="w-full max-w-xl flex flex-col space-y-4">
-          {conversation.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`p-4 rounded-lg ${
-                msg.role === "user"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-300 text-gray-800"
-              }`}
-            >
-              {formatMessageContent(msg.content)}
-              {msg.role !== "user" && (
-                <button
-                  onClick={() => startSpeak(msg.content)}
-                  className="ml-2 underline"
-                >
-                  🔉
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Chat Input / Voice Button */}
-      <div className="sticky bottom-0 p-4 flex justify-center">
-        {voiceMode ? (
-          <button
-            // Start or stop listening
-            onClick={() => {
-              setListening(!listening);
-              if (!listening) startVoiceRecognition();
-            }}
-            className={`w-16 h-16 rounded-full flex items-center justify-center ${
-              listening ? "bg-red-500" : "bg-blue-500"
+          <div
+            className={`p-3 rounded-lg max-w-xl ${
+              msg.role === "user"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-300 text-gray-800"
             }`}
           >
-            {listening ? "👂" : "🎙️"}
-          </button>
-        ) : (
-          <div className="w-full max-w-xl flex items-center space-x-2">
-            <input
-              value={userMessage}
-              onChange={(e) => setUserMessage(e.target.value)}
-              className="flex-1 px-4 py-2 rounded-full"
-            />
-            <button
-              onClick={() => handleSend(userMessage)}
-              className="bg-blue-500 px-6 py-2 rounded-full text-white"
-            >
-              Send
-            </button>
+            {formatMessageContent(msg.content)}
+            {msg.role !== "user" && (
+              <button
+                onClick={() => startSpeak(msg.content)}
+                className="ml-2 underline"
+              >
+                🔉
+              </button>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      ))}
     </div>
+  </div>
+
+  {/* Fixed Chat Input / Voice Button (always visible) */}
+  <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-3xl bg-transparent p-4 ">
+    {voiceMode ? (
+      <div className="flex justify-center">
+        <button
+          onClick={() => {
+            setListening(!listening);
+            if (!listening) startVoiceRecognition();
+          }}
+          className={`w-16 h-16 rounded-full flex items-center justify-center ${
+            listening ? "bg-red-500" : "bg-blue-500"
+          } text-white text-2xl transition-colors`}
+        >
+          {listening ? "👂" : "🎙️"}
+        </button>
+      </div>
+    ) : (
+      <div className="flex items-center space-x-2">
+        <input
+          value={userMessage}
+          onChange={(e) => setUserMessage(e.target.value)}
+          className="flex-1 px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:border-blue-400"
+          placeholder="Type your message..."
+        />
+        <button
+          onClick={() => handleSend(userMessage)}
+          className="bg-blue-500 px-6 py-2 rounded-full text-white hover:bg-blue-600 transition-colors"
+        >
+          Send
+        </button>
+      </div>
+    )}
+  </div>
+</div>
+
+
+
+
+  
   );
 }

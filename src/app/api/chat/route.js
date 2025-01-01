@@ -2,6 +2,8 @@ import Groq from "groq-sdk";
 
 const groq = new Groq({ apiKey: process.env.API_KEY });
 
+
+
 // 1) Handle OPTIONS request for CORS preflight
 export async function OPTIONS() {
   return new Response(null, {
